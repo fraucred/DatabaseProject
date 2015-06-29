@@ -1,0 +1,63 @@
+Reminder from Hyppo's explanation about the DBMS
+
+IF YOU HAVE anything to change, just put a comment or edit the file (make a PULL REQUEST to change the file)
+
+If you don't understand something just ask me or Hyppo ^^
+
+------------------------------------------------------------- BEGINNING OF FILE
+
+5 pts :
+	- create table,
+	- insert new tuple in existing table,
+	- delete row in existing table, ->
+	- update values of data items, ->
+	- search row or columns with some conditions; ->
+3 pts : foreign key ->
+2 pts : primary key
+
+init.db : -> dbname
+	  -> url
+once we create db we put itt in this folder
+data : 
+-> db1
+-> db2
+-> db3
+
+db1 : db.name.inf, db.name.tb, db.name.tdf
+
+create database: 
+3 lvl 
+-interface (menu->popup->enter db name)
+-create db entity object (what info need to be put)
+-file on HD (I/O)
+
+1)create db: init.db -> write db info like name plus folder path
+2) create folder for db
+-> db.name.inf file
+3) open db 3 steps : menu-> popup-> dropdown list
+
+dropdownlist : operation to read file and get in memory
+
+with the name, we can look for the folder then read the files inside
+4) create table : user clicks, popup then fills information
+Create table object, file operation (folder of the db, write the information on the file)
+
+Use arraylist to store information from db : what info we want to store in memory ( have to think ) -> name, location/path, list of tables (name of the table, location, time when created, last modified?)
+
+One table contains list of attributes -> go to the file which contains attributes, put into arrayList
+
+ex : update value -> need attribute value 
+
+2 datastructures : arrayList, HashMap, maybe multivalueMap
+
+hashmap 2 parameters key and value ( key string, value any datatype ) -> store values of the attributes
+
+ex Table student : id,name,age
+Insert into student (1,aubrey,50)
+	    student (2,david,40) (can be stored in hashmap)
+
+
+From Andrew : connect interface with code
+lot of debug
+
+------------------------------------------------------------- END OF FILE

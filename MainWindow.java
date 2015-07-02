@@ -6,13 +6,18 @@ import java.io.*;
 
 import javax.swing.*;
 import javax.swing.border.Border;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.MutableTreeNode;
+import javax.swing.tree.TreeSelectionModel;
 
+import entity.Field;
 import entity.Table;
 import logic.LogicMain;
 
-public class MainWindow implements ActionListener {
+public class MainWindow implements ActionListener, TreeSelectionListener {
 
 	private JFrame mainFrame,generalPopup;
 	private JMenuBar menuBar;
@@ -28,9 +33,9 @@ public class MainWindow implements ActionListener {
 	private JLabel statusLabel;
 	private String databaseName;
 	private JTree tree;
-	private DefaultMutableTreeNode root;
-//	private ActionListener validCreateListener;
-//	private ActionListener cancelListener;
+	private DefaultMutableTreeNode root, table, moving=null;
+	//	private ActionListener validCreateListener;
+	//	private ActionListener cancelListener;
 
 	public MainWindow() {
 
@@ -70,7 +75,7 @@ public class MainWindow implements ActionListener {
 		//		fileChooser = new JFileChooser();
 		//		fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
 		//		file = new File("");
-		
+
 		toolbar = new JToolBar();
 		newFile = new JButton(new ImageIcon("Images/new.png"));
 		openFile = new JButton(new ImageIcon("Images/open.png"));
@@ -91,12 +96,14 @@ public class MainWindow implements ActionListener {
 		aboutItem = new JMenuItem("About Database Management System (DMBS)(H)");
 
 		root = new DefaultMutableTreeNode("Root of Database"); // Top element of the tree list
-//		root.
+		//		root.
 		tree = new JTree(root);
 		tree.setRootVisible(false);
+		tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+		tree.addTreeSelectionListener(this);
 		panelleft = new JScrollPane(tree);
 		panelright = new JScrollPane();
-		
+
 	}
 
 	@SuppressWarnings("deprecation")
@@ -194,7 +201,7 @@ public class MainWindow implements ActionListener {
 		mainPanel.add(centerPanel,BorderLayout.CENTER);
 		mainPanel.add(statusLabel,BorderLayout.SOUTH);
 		//		mainPanel.add(panelright);
-		
+
 	}
 
 	public static void main(String args[]) {
@@ -326,20 +333,52 @@ public class MainWindow implements ActionListener {
 		JPanel panel = new JPanel(new BorderLayout());
 		JPanel fieldPanel = new JPanel();
 		fieldPanel.setLayout(new BoxLayout(fieldPanel, BoxLayout.LINE_AXIS));
-//		fieldPanel.setSize(500, 100);
+		//		fieldPanel.setSize(500, 100);
 		JPanel checkPanel = new JPanel();
-		JComboBox dataTypeBox = getComboBox("addField");
+		final JComboBox dataTypeBox = getComboBox("addField");
 		JLabel nameLabel = new JLabel("Name");
 		JLabel dataTypeLabel = new JLabel("Data Type");
 		JLabel valeurParDefo = new JLabel("Default Value");
-		JTextField nameField = new JTextField(10), defaultField = new JTextField(10);
-		JCheckBox primary = new JCheckBox("Primary Key");
+		final JTextField nameField = new JTextField(10);
+		final JTextField defaultField = new JTextField(10);
+		final JCheckBox primary = new JCheckBox("Primary Key");
 		final JCheckBox mandatory = new JCheckBox("Not NULL");
 		JPanel buttonPanel = getButtonPanel(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				generalPopup.setVisible(false);
+				if (nameField.getText() != null)
+				{
+					generalPopup.setVisible(false);
+					Field field = new Field();
+					field.setFieldName(nameField.getText());
+					field.setDefaultValue(defaultField.getText());
+					field.setFieldType((String)dataTypeBox.getSelectedItem());
+					int integrity = -1;
+					if(primary.isSelected())
+						integrity = 1;
+					else if (mandatory.isSelected())
+						integrity = 0;
+					field.setFieldIntegrities(integrity);
+					LogicMain m_pDocument = LogicMain.getDocument();
+					m_pDocument.setEditTable((String)moving.getUserObject());
+					field = m_pDocument.addField(field);
+					String strError = m_pDocument.getError();
+					if (strError != null)
+					{
+						new JOptionPane(strError);
+						m_pDocument.setError("");
+					}
+					else
+					{
+						if (m_pDocument.getDatabaseName() != null)
+						{
+							mainFrame.setTitle(m_pDocument.getDatabaseName());
+							createNodes(moving,"field",nameField.getText());
+						}
+					}
+				}
+				update();
 			}
 		});
 		fieldPanel.add(nameLabel);
@@ -348,36 +387,36 @@ public class MainWindow implements ActionListener {
 		fieldPanel.add(dataTypeBox);
 		fieldPanel.add(valeurParDefo);
 		fieldPanel.add(defaultField);
-		
+
 		primary.addActionListener(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				mandatory.setSelected(true);
 			}
 		});
 		mandatory.addActionListener(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				
+
 			}
 		});
-		
+
 		checkPanel.add(primary);
 		checkPanel.add(mandatory);
-		
+
 		panel.add(fieldPanel,BorderLayout.NORTH);
 		panel.add(checkPanel,BorderLayout.CENTER);
 		panel.add(buttonPanel,BorderLayout.SOUTH);
-		
+
 		setDesignPanel(fieldPanel, "Please complete the form below");
 		setDesignPanel(checkPanel, "");
-		
+
 		generalPopup.setContentPane(panel);
 		generalPopup.setTitle("Add a new field");
 		generalPopup.setVisible(true);
-		
+
 	}
 
 	private void deleteTable() {
@@ -396,17 +435,17 @@ public class MainWindow implements ActionListener {
 		JPanel openTablePanel = new JPanel();
 		final JComboBox tableNameBox = getComboBox("openTable");
 		JPanel buttonPanel = getButtonPanel(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				
+
 			}
 		});
-		
+
 		openTablePanel.add(tableNameBox);
 		panel.add(openTablePanel, BorderLayout.CENTER);
 		panel.add(buttonPanel, BorderLayout.SOUTH);
-		
+
 		setDesignPanel(openTablePanel, "Please choose the table you want to open");
 		generalPopup.setContentPane(panel);
 		generalPopup.setTitle("Open a table");
@@ -420,17 +459,17 @@ public class MainWindow implements ActionListener {
 		JPanel chooseTablePanel = new JPanel();
 		final JComboBox tableNameBox = getComboBox("modTable");
 		JPanel buttonPanel = getButtonPanel(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				System.out.println(tableNameBox.getSelectedItem());
 			}
 		});
-		
+
 		chooseTablePanel.add(tableNameBox);
 		panel.add(chooseTablePanel,BorderLayout.CENTER);
 		panel.add(buttonPanel,BorderLayout.SOUTH);
-		
+
 		setDesignPanel(chooseTablePanel, "Choose the table you want to modify");
 		generalPopup.setContentPane(panel);
 		generalPopup.setTitle("Modify a table");
@@ -441,14 +480,14 @@ public class MainWindow implements ActionListener {
 				BorderFactory.createTitledBorder(title),
 				BorderFactory.createEmptyBorder(10,10,10,10)));
 	}
-// New starting now...
+	// New starting now...
 	private void newTable() {
 
 		statusLabel.setText("Creating a new table");
 		JPanel panel = new JPanel(new BorderLayout());
 		final JTextField tableName = new JTextField(10);
 		JPanel buttonPanel = getButtonPanel(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
 
@@ -460,32 +499,32 @@ public class MainWindow implements ActionListener {
 					String strError = m_pDocument.getError();
 					if (strError != null)
 					{
-//						AfxMessagstrError); //popup here JOptionPanel
+						new JOptionPane(strError);
 						m_pDocument.setError("");
 					}
 					else
 					{
 						if (m_pDocument.getDatabaseName() != null)
 						{
-//							CreateDatabaseTree(m_pDocument.getDatabaseName()); arbre
 							mainFrame.setTitle(m_pDocument.getDatabaseName());
+							table = createNodes(root,"table",tableName.getText());
 						}
 					}
 				}
-			
+				update();
 			}
 		});
 		JPanel createPanel = new JPanel();
-		
-		
+
+
 		createPanel.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createTitledBorder("Please enter the name of the table to be created"),
 				BorderFactory.createEmptyBorder(10,10,10,10)));
-		
+
 		createPanel.add(tableName);
 		panel.add(createPanel,BorderLayout.CENTER);
 		panel.add(buttonPanel,BorderLayout.SOUTH);
-		
+
 		generalPopup.setContentPane(panel);
 		generalPopup.setTitle("Create a new table");
 		generalPopup.setVisible(true);
@@ -493,26 +532,26 @@ public class MainWindow implements ActionListener {
 	public JPanel getButtonPanel(ActionListener okayButtonListener) {
 		JPanel buttonPanel = new JPanel();
 		JButton okayButton = new JButton("Accept"), cancelButton = new JButton("Cancel");
-		
+
 		buttonPanel.add(okayButton);
 		buttonPanel.add(cancelButton);
-		
+
 		buttonPanel.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createTitledBorder(""),
 				BorderFactory.createEmptyBorder(10,10,10,10)));
 		okayButton.addActionListener(okayButtonListener);
 		cancelButton.addActionListener(cancelListener);
-		
+
 		return buttonPanel;
 	}
-//open database done!
+	//open database done!
 	private void openDatabase() {
 
 		statusLabel.setText("Opening database");
 		JPanel panel = new JPanel(new BorderLayout());
 		final JComboBox dbNameBox = getComboBox("openDatabase");
 		JPanel buttonPanel = getButtonPanel(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				if(dbNameBox.getSelectedItem() != null)
@@ -525,56 +564,73 @@ public class MainWindow implements ActionListener {
 					String strError = m_pDocument.getError();
 					if (strError != null)
 					{
-//						AfxMessagstrError); //popup here JOptionPanel
+						new JOptionPane(strError);
 						m_pDocument.setError("");
 					}
 					else
 					{
 						if (m_pDocument.getDatabaseName() != null)
 						{
-//							CreateDatabaseTree(m_pDocument.getDatabaseName()); arbre
-							m_pDocument.loadTables();
+							//							CreateDatabaseTree(m_pDocument.getDatabaseName()); arbre
 							mainFrame.setTitle(m_pDocument.getDatabaseName());
 							root.setUserObject(m_pDocument.getDatabaseName());
+							//							tree.clearSelection();
+							root.removeAllChildren();
 							tree.setRootVisible(true);
+							m_pDocument.loadTables();
+							java.util.List<Table> tables = m_pDocument.getTbArray();
+							for(int i=0; i<tables.size(); i++)
+							{
+								table = createNodes(root, "table", tables.get(i).getTableName());
+								if(tables.get(i).getFieldArray()!= null)
+								{
+									for(int j=0; j<tables.get(i).getFieldArray().size(); j++)
+									{
+										createNodes(table, "field", tables.get(i).getFieldArray().get(j).getFieldName());
+									}
+								}
+
+							}
+							
+//							tree = new JTree(root);
 						}
 					}
 				}
-				
+				update();
 			}
 		});
 		JPanel openPanel = new JPanel();
-//		JButton okayButton = new JButton("Accept"), cancelButton = new JButton("Cancel");
-		
-		
-//		dbNameBox = getComboBox();
+		//		JButton okayButton = new JButton("Accept"), cancelButton = new JButton("Cancel");
+
+
+		//		dbNameBox = getComboBox();
 		// dbNameBox.getSelectedItem()
 		// to acccess the selected object
-		
+
 		openPanel.add(dbNameBox);
-//		buttonPanel.add(okayButton);
-//		buttonPanel.add(cancelButton);
-		
+		//		buttonPanel.add(okayButton);
+		//		buttonPanel.add(cancelButton);
+
 		openPanel.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createTitledBorder("Please choose the database you want to open :"),
 				BorderFactory.createEmptyBorder(10,10,10,10)));
-//		buttonPanel.setBorder(BorderFactory.createCompoundBorder(
-//				BorderFactory.createTitledBorder(""),
-//				BorderFactory.createEmptyBorder(10,10,10,10)));
-		
-//		okayButton.addActionListener();
-//		cancelButton.addActionListener(cancelListener);
-		
+		//		buttonPanel.setBorder(BorderFactory.createCompoundBorder(
+		//				BorderFactory.createTitledBorder(""),
+		//				BorderFactory.createEmptyBorder(10,10,10,10)));
+
+		//		okayButton.addActionListener();
+		//		cancelButton.addActionListener(cancelListener);
+
 		panel.add(openPanel,BorderLayout.CENTER);
 		panel.add(buttonPanel,BorderLayout.SOUTH);
-		
+
 		generalPopup.setContentPane(panel);
 		generalPopup.setTitle("Open a database");
 		generalPopup.setVisible(true);
 	}
-	
-	
-	
+
+
+
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public JComboBox getComboBox(String typeOfComboBox) 
 	{
@@ -590,7 +646,7 @@ public class MainWindow implements ActionListener {
 			}
 			else
 			{
-//				AfxMessagstrError); //popup here JOptionPanel
+				//				AfxMessagstrError); //popup here JOptionPanel
 				m_pDocument.setError("");
 			}
 
@@ -613,33 +669,33 @@ public class MainWindow implements ActionListener {
 		}
 		return comboBox;
 	}	
-	
-// create database done!
+
+	// create database done!
 	private void createDatabase() {
 
 		statusLabel.setText("Creating database");
 		JPanel panel = new JPanel(new BorderLayout());
 		JPanel buttonPanel = new JPanel();
 		JPanel createPanel = new JPanel();
-		JButton okayButton = new JButton("ok"), cancelButton = new JButton("Cancel");
+		JButton okayButton = new JButton("Accept"), cancelButton = new JButton("Cancel");
 		final JTextField dbnameText = new JTextField(10);
 
 		createPanel.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createTitledBorder("Please input the name of the database to be created"),
-						BorderFactory.createEmptyBorder(10,10,10,10)));
+				BorderFactory.createEmptyBorder(10,10,10,10)));
 		buttonPanel.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createTitledBorder(""),
-						BorderFactory.createEmptyBorder(10,10,10,10)));
+				BorderFactory.createEmptyBorder(10,10,10,10)));
 
 		createPanel.add(dbnameText);
 		buttonPanel.add(okayButton);
-		
+
 		okayButton.addActionListener(new ActionListener() {
-			
+
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				databaseName = dbnameText.getText();
-				
+
 				if (databaseName != null)
 				{
 					generalPopup.setVisible(false);
@@ -649,36 +705,37 @@ public class MainWindow implements ActionListener {
 					String strError = m_pDocument.getError();
 					if (strError != null)
 					{
-//						AfxMessagstrError); //popup here JOptionPanel
+						//						AfxMessagstrError); //popup here JOptionPanel
 						m_pDocument.setError("");
 					}
 					else
 					{
 						if (m_pDocument.getDatabaseName() != null)
 						{
-//							CreateDatabaseTree(m_pDocument.getDatabaseName()); arbre
+							//							CreateDatabaseTree(m_pDocument.getDatabaseName()); arbre
 							mainFrame.setTitle(m_pDocument.getDatabaseName());
 							tree.setRootVisible(true);
 							root.setUserObject(m_pDocument.getDatabaseName());
-							createNodes(root);
+							root = createNodes(root,"","");
 						}
 					}
 				}
+				update();
 			}
 		});
-		
+
 		buttonPanel.add(cancelButton);
-		
-//		okayButton.addActionListener(validCreateListener);
+
+		//		okayButton.addActionListener(validCreateListener);
 		cancelButton.addActionListener(cancelListener);
 
 		panel.add(createPanel,BorderLayout.CENTER);
 		panel.add(buttonPanel,BorderLayout.SOUTH);
-		
+
 		generalPopup.setContentPane(panel);
 		generalPopup.setTitle("Create a new database");
 		generalPopup.setVisible(true);
-		
+
 
 	}
 	ActionListener cancelListener = new ActionListener() {
@@ -687,19 +744,24 @@ public class MainWindow implements ActionListener {
 		public void actionPerformed(ActionEvent arg0) {
 			generalPopup.setVisible(false);
 		}
-		
+
 	};
-	
+
 	// to list the tree of the databases / tables ...
-	private void createNodes(DefaultMutableTreeNode root) {
-//		root = new DefaultMutableTreeNode(databaseName);
-//		tree = new JTree(root);
-//		tree.setRootVisible(true);
-		DefaultMutableTreeNode one = getTreeNode("TableName",root);
-		DefaultMutableTreeNode two = getTreeNode("TableName2",root);
-		DefaultMutableTreeNode three = getTreeNode("TableName3",root);
-		DefaultMutableTreeNode one_one = getTreeNode("FieldTableOne", one);
-//		one.
+	private DefaultMutableTreeNode createNodes(DefaultMutableTreeNode parent, String nodeType, String nameOfNode) {
+		//		root = new DefaultMutableTreeNode(databaseName);
+		//		tree = new JTree(root);
+		//		tree.setRootVisible(true);
+		if(nodeType.equals("table"))
+		{
+			return getTreeNode(nameOfNode, parent);
+		}
+		else if(nodeType=="field")
+		{
+			return getTreeNode(nameOfNode, parent);
+		}
+		return parent;
+
 	}
 
 	private DefaultMutableTreeNode getTreeNode(Object anything, DefaultMutableTreeNode parent) {
@@ -707,5 +769,14 @@ public class MainWindow implements ActionListener {
 		parent.add(node);
 		return node;
 	}
-	
+
+	@Override
+	public void valueChanged(TreeSelectionEvent e) {
+		DefaultMutableTreeNode node = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+		moving = node;
+	}
+	private void update() {
+		DefaultTreeModel model = (DefaultTreeModel) tree.getModel();
+		model.reload();
+	}
 }

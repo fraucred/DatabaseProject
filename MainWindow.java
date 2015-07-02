@@ -6,6 +6,8 @@ import java.io.*;
 
 import javax.swing.*;
 import javax.swing.border.Border;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.MutableTreeNode;
 
 import entity.Table;
 import logic.LogicMain;
@@ -25,6 +27,8 @@ public class MainWindow implements ActionListener {
 	private JSplitPane centerPanel;
 	private JLabel statusLabel;
 	private String databaseName;
+	private JTree tree;
+	private DefaultMutableTreeNode root;
 //	private ActionListener validCreateListener;
 //	private ActionListener cancelListener;
 
@@ -66,8 +70,7 @@ public class MainWindow implements ActionListener {
 		//		fileChooser = new JFileChooser();
 		//		fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
 		//		file = new File("");
-		panelleft = new JScrollPane();
-		panelright = new JScrollPane();
+		
 		toolbar = new JToolBar();
 		newFile = new JButton(new ImageIcon("Images/new.png"));
 		openFile = new JButton(new ImageIcon("Images/open.png"));
@@ -87,6 +90,13 @@ public class MainWindow implements ActionListener {
 		queryRecItem = new JMenuItem("Query Record(Q)");
 		aboutItem = new JMenuItem("About Database Management System (DMBS)(H)");
 
+		root = new DefaultMutableTreeNode("Root of Database"); // Top element of the tree list
+//		root.
+		tree = new JTree(root);
+		tree.setRootVisible(false);
+		panelleft = new JScrollPane(tree);
+		panelright = new JScrollPane();
+		
 	}
 
 	@SuppressWarnings("deprecation")
@@ -523,7 +533,10 @@ public class MainWindow implements ActionListener {
 						if (m_pDocument.getDatabaseName() != null)
 						{
 //							CreateDatabaseTree(m_pDocument.getDatabaseName()); arbre
+							m_pDocument.loadTables();
 							mainFrame.setTitle(m_pDocument.getDatabaseName());
+							root.setUserObject(m_pDocument.getDatabaseName());
+							tree.setRootVisible(true);
 						}
 					}
 				}
@@ -626,6 +639,7 @@ public class MainWindow implements ActionListener {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				databaseName = dbnameText.getText();
+				
 				if (databaseName != null)
 				{
 					generalPopup.setVisible(false);
@@ -644,6 +658,9 @@ public class MainWindow implements ActionListener {
 						{
 //							CreateDatabaseTree(m_pDocument.getDatabaseName()); arbre
 							mainFrame.setTitle(m_pDocument.getDatabaseName());
+							tree.setRootVisible(true);
+							root.setUserObject(m_pDocument.getDatabaseName());
+							createNodes(root);
 						}
 					}
 				}
@@ -672,4 +689,23 @@ public class MainWindow implements ActionListener {
 		}
 		
 	};
+	
+	// to list the tree of the databases / tables ...
+	private void createNodes(DefaultMutableTreeNode root) {
+//		root = new DefaultMutableTreeNode(databaseName);
+//		tree = new JTree(root);
+//		tree.setRootVisible(true);
+		DefaultMutableTreeNode one = getTreeNode("TableName",root);
+		DefaultMutableTreeNode two = getTreeNode("TableName2",root);
+		DefaultMutableTreeNode three = getTreeNode("TableName3",root);
+		DefaultMutableTreeNode one_one = getTreeNode("FieldTableOne", one);
+//		one.
+	}
+
+	private DefaultMutableTreeNode getTreeNode(Object anything, DefaultMutableTreeNode parent) {
+		DefaultMutableTreeNode node = new DefaultMutableTreeNode(anything);
+		parent.add(node);
+		return node;
+	}
+	
 }

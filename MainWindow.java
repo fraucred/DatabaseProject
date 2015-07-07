@@ -3,17 +3,26 @@ package view;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Vector;
 
+import javax.annotation.Generated;
 import javax.swing.*;
 import javax.swing.border.Border;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableModel;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreeSelectionModel;
 
 import entity.Field;
+import entity.Record;
 import entity.Table;
 import logic.LogicMain;
 
@@ -22,11 +31,11 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 	private JFrame mainFrame,generalPopup;
 	private JMenuBar menuBar;
 	private JMenu menu1, menu2, menu3, menu4, menu5, menu6;
-	private JMenuItem exitItem,createItem,openItem,newTabItem,modTabItem,openTabItem,delTabItem;
+	private JMenuItem reloadItem,exitItem,createItem,openItem,newTabItem,modTabItem,openTabItem,delTabItem;
 	private JMenuItem addFieldItem,modFieldItem,delFieldItem,addRecItem,modRecItem,delRecItem,queryRecItem;
 	private JMenuItem aboutItem;
 	private JPanel mainPanel;
-	private JScrollPane panelleft,panelright;
+	private JScrollPane panelleft,panelright,panelright2;
 	private JToolBar toolbar;
 	private JButton newFile, openFile;
 	private JSplitPane centerPanel;
@@ -34,9 +43,13 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 	private String databaseName;
 	private JTree tree;
 	private DefaultMutableTreeNode root, table, moving=null;
-	//	private ActionListener validCreateListener;
-	//	private ActionListener cancelListener;
+	private JTable showTable,recordTable,showTable2;
+	private boolean is_mandatory = false,is_primarykey = false,is_foreignkey = false;
+//	private Table movingTable;
 
+	private DefaultTableModel tableModel = new DefaultTableModel(0,0);
+	private DefaultTableModel dtm = new DefaultTableModel(0,0),dtm2;
+	private JMenuItem test = new JMenuItem("test = swap between FieldView and RecordView");
 	public MainWindow() {
 
 		mainFrame = new JFrame("DMBS");
@@ -79,12 +92,13 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		toolbar = new JToolBar();
 		newFile = new JButton(new ImageIcon("Images/new.png"));
 		openFile = new JButton(new ImageIcon("Images/open.png"));
+		reloadItem = new JMenuItem("Refresh = adapt FieldView when choosing one table");
 		exitItem = new JMenuItem("Exit(X)");
 		createItem = new JMenuItem("Create Database(C)");
 		openItem = new JMenuItem("Open Database(O)");
 		newTabItem = new JMenuItem("New Table(N)");
 		modTabItem = new JMenuItem("Modify Table(M)");
-		openTabItem = new JMenuItem("Open Table(O)");
+		openTabItem = new JMenuItem("View Record(O)");
 		delTabItem = new JMenuItem("Delete Table(D)");
 		addFieldItem = new JMenuItem("Add Field(A)");
 		modFieldItem = new JMenuItem("Modify Field(M)");
@@ -96,14 +110,56 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		aboutItem = new JMenuItem("About Database Management System (DMBS)(H)");
 
 		root = new DefaultMutableTreeNode("Root of Database"); // Top element of the tree list
-		//		root.
 		tree = new JTree(root);
 		tree.setRootVisible(false);
 		tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 		tree.addTreeSelectionListener(this);
 		panelleft = new JScrollPane(tree);
-		panelright = new JScrollPane();
 
+		String[] columnNames = {"Column",
+				"Data type",
+				"Not Null",
+				"Primary Key",
+		"Default Value"};
+		showTable = new JTable();
+		showTable.setFillsViewportHeight(true);
+		tableModel.setColumnIdentifiers(columnNames);
+		showTable.setModel(tableModel);
+		panelright = new JScrollPane(showTable);
+		showTable2 = new JTable();
+		dtm.setColumnIdentifiers(columnNames);
+		showTable2.setFillsViewportHeight(true);
+		showTable2.setModel(dtm);
+		panelright2 = new JScrollPane(showTable2);
+		dtm2 = new DefaultTableModel(0,0);
+		showTable2.setModel(dtm2);
+		showTable2.addMouseListener(new MouseListener() {
+
+			@Override
+			public void mouseReleased(MouseEvent e) {
+
+			}
+
+			@Override
+			public void mousePressed(MouseEvent e) {
+
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e) {
+
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e) {
+
+			}
+
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				System.out.println(showTable2.getSelectedRow());
+			}
+		});
 	}
 
 	@SuppressWarnings("deprecation")
@@ -113,8 +169,8 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		mainFrame.setSize(800, 600);
 		mainFrame.setVisible(true);
 		mainFrame.setJMenuBar(menuBar);
-		generalPopup.setSize(300, 200);
-		//mainFrame.pack();
+		generalPopup.setSize(370, 225);
+
 
 		menu1.setMnemonic('S');
 		menu2.setMnemonic('D');
@@ -122,6 +178,13 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		menu4.setMnemonic('F');
 		menu5.setMnemonic('R');
 		menu6.setMnemonic('H');
+		// new
+		menu1.add(reloadItem);
+		reloadItem.addActionListener(this);
+		//new
+
+		menu1.add(test);
+		test.addActionListener(this);
 
 		menu1.add(exitItem);
 		exitItem.addActionListener(this);
@@ -140,12 +203,13 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		modTabItem.setMnemonic('M');
 		menu3.add(openTabItem);
 		openTabItem.addActionListener(this);
-		openTabItem.setEnabled(false);
+		openTabItem.setEnabled(true);
 		openTabItem.setMnemonic('O');
 		menu3.add(delTabItem);
 		delTabItem.addActionListener(this);
 		delTabItem.setEnabled(false);
 		delTabItem.setMnemonic('D');
+		delTabItem.hide();
 		menu4.add(addFieldItem);
 		addFieldItem.addActionListener(this);
 		addFieldItem.setMnemonic('A');
@@ -153,25 +217,28 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		modFieldItem.addActionListener(this);
 		modFieldItem.setEnabled(false);
 		modFieldItem.setMnemonic('M');
+		modFieldItem.hide();
 		menu4.add(delFieldItem);
 		delFieldItem.addActionListener(this);
 		delFieldItem.setEnabled(false);
 		delFieldItem.setMnemonic('D');
+		delFieldItem.hide();
 		menu5.add(addRecItem);
 		addRecItem.addActionListener(this);
 		addRecItem.setMnemonic('A');
 		menu5.add(modRecItem);
 		modRecItem.addActionListener(this);
-		modRecItem.setEnabled(false);
+		modRecItem.setEnabled(true);
 		modRecItem.setMnemonic('M');
 		menu5.add(delRecItem);
 		delRecItem.addActionListener(this);
-		delRecItem.setEnabled(false);
+		delRecItem.setEnabled(true);
 		delRecItem.setMnemonic('D');
 		menu5.add(queryRecItem);
 		queryRecItem.addActionListener(this);
-		queryRecItem.setEnabled(false);
+		queryRecItem.setEnabled(true);
 		queryRecItem.setMnemonic('Q');
+//		queryRecItem.hide();
 		menu6.add(aboutItem);
 		aboutItem.addActionListener(this);
 		aboutItem.setMnemonic('H');
@@ -192,15 +259,13 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		toolbar.setFloatable(false);
 
 		centerPanel.setDividerLocation(200);
-		centerPanel.disable();
 		centerPanel.setLeftComponent(panelleft);
 		centerPanel.setRightComponent(panelright);
 
-		//mainPanel.add(menuBar,BorderLayout.PAGE_START);
+
 		mainPanel.add(toolbar,BorderLayout.NORTH);
 		mainPanel.add(centerPanel,BorderLayout.CENTER);
 		mainPanel.add(statusLabel,BorderLayout.SOUTH);
-		//		mainPanel.add(panelright);
 
 	}
 
@@ -213,9 +278,15 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
-		//		if (arg0.getSource() != newFile && arg0.getSource() != openFile) {
-		//			statusLabel.setText(((JMenuItem) arg0.getSource()).getText());
-		//		}
+		if (arg0.getSource() == reloadItem) {
+			updateTable();
+		}
+		if (arg0.getSource() == test) {
+			if (centerPanel.getRightComponent() == panelright)
+				centerPanel.setRightComponent(panelright2);
+			else if (centerPanel.getRightComponent() == panelright2)
+				centerPanel.setRightComponent(panelright);
+		}
 		if (arg0.getSource() == exitItem) {
 			System.exit(0);
 		}
@@ -232,7 +303,13 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 			modTable();
 		}
 		if (arg0.getSource() == openTabItem) {
-			openTable();
+			try {
+				openTable();
+			} catch (SecurityException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 		if (arg0.getSource() == delTabItem) {
 			deleteTable();
@@ -250,10 +327,22 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 			addRecord();
 		}
 		if (arg0.getSource() == modRecItem) {
-			modRecord();
+			try {
+				modRecord();
+			} catch (SecurityException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 		if (arg0.getSource() == delRecItem) {
-			delRecord();
+			try {
+				delRecord();
+			} catch (SecurityException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 		if (arg0.getSource() == queryRecItem) {
 			queryRecord();
@@ -273,37 +362,215 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		generalPopup.setVisible(true);
 	}
 
-	private void queryRecord() {
+	private void queryRecord() 
+	{
 
 		statusLabel.setText("Querying record");
 		JPanel panel = new JPanel(new BorderLayout());
+		JCheckBox all = new JCheckBox("All data");
+		JPanel buttonPanel = getButtonPanel(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				if (all.isSelected()) {
+					try {
+						openTable();
+					} catch (SecurityException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+				}
+				generalPopup.setVisible(false);
+			}
+		});
+		
+		JPanel searchPanel = new JPanel();
+		
+		
+		JLabel tableName = new JLabel("Table name");
+		JLabel fieldName = new JLabel("Field name");
+		LogicMain m_pDocument = LogicMain.getDocument();
+		java.util.List<Table> tableList = m_pDocument.getTbArray();
+		java.util.List<Field> fieldList;
+		JComboBox comboBox = getComboBox("queryRecord");
+		JComboBox comboBox2 = getComboBox("queryRecord2");
+		comboBox.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				 m_pDocument.setEditTable((String) comboBox.getSelectedItem());
+				 movingTable = m_pDocument.getTbEntity();
+				 
+			}
+		});
+		
+		if (m_pDocument.getTbEntity()!=null) {
+			fieldList = m_pDocument.getTbEntity().getFieldArray();
+		}
+ 		searchPanel.add(all);
+ 		searchPanel.add(tableName);
+ 		searchPanel.add(comboBox);
+ 		searchPanel.add(fieldName);
+ 		searchPanel.add(comboBox2);
+		
+		panel.add(searchPanel,BorderLayout.CENTER);
+		panel.add(buttonPanel,BorderLayout.SOUTH);
+		
 		generalPopup.setContentPane(panel);
 		generalPopup.setTitle("Query a record");
 		generalPopup.setVisible(true);
+
 	}
 
-	private void delRecord() {
+	private void delRecord() throws SecurityException, IOException {
+
+		//		for (int i = 0; i < dtm2.getRowCount(); i++) {
+		//			for (int j = 0; j < dtm2.getColumnCount(); j++) {
+		//				System.out.println(dtm2.getValueAt(i, j));
+		//			}
+		//		}
+		int selectedRow = showTable2.getSelectedRow();
+		dtm2.removeRow(selectedRow);
+
+		LogicMain m_pDocument = LogicMain.getDocument();
+		m_pDocument.setEditTable((String)moving.getUserObject());
+		m_pDocument.loadRecord();
+		Record record = new Record();
+		for (int i = 0; i < dtm2.getRowCount(); i++) {
+			for (int j = 0; j < dtm2.getColumnCount(); j++) {
+				// we put into hashmap the values
+				String fieldName = dtm2.getColumnName(j);
+				Object fieldValue = dtm2.getValueAt(i, j);
+				record.put(fieldName, fieldValue);
+				m_pDocument.replaceRecord(record);
+			}
+		}
+		/*LogicMain m_pDocument = LogicMain.getDocument();
+		java.util.List<Record> recordList = m_pDocument.getRecArray();
 
 		statusLabel.setText("Deleting record");
 		JPanel panel = new JPanel(new BorderLayout());
 		generalPopup.setContentPane(panel);
 		generalPopup.setTitle("Delete a record");
-		generalPopup.setVisible(true);
+		generalPopup.setVisible(true);*/
 	}
 
-	private void modRecord() {
+	private void modRecord() throws SecurityException, IOException {				// save the modified record and write it
 
 		statusLabel.setText("Modifying record");
-		JPanel panel = new JPanel(new BorderLayout());
-		generalPopup.setContentPane(panel);
-		generalPopup.setTitle("Modify a record");
-		generalPopup.setVisible(true);
+		Record record = new Record();
+
+		LogicMain m_pDocument = LogicMain.getDocument();
+		m_pDocument.setEditTable((String)moving.getUserObject());
+		m_pDocument.loadRecord();
+
+		for (int i = 0; i < dtm2.getRowCount(); i++) {
+			for (int j = 0; j < dtm2.getColumnCount(); j++) {
+				// we put into hashmap the values
+				String fieldName = dtm2.getColumnName(j);
+				Object fieldValue = dtm2.getValueAt(i, j);
+				record.put(fieldName, fieldValue);
+				//				m_pDocument.replaceRecord(record);
+				m_pDocument.insertRecord(record);
+			}
+		}
+		new JOptionPane("ANDREW MADE IT!!");
 	}
 
 	private void addRecord() {
 
 		statusLabel.setText("Adding a new record");
 		JPanel panel = new JPanel(new BorderLayout());
+		String[] column = new String[] {"Field Name", "Field Type", "Value"};
+		final Vector<String> newcolumn = new Vector<String>();
+		recordTable = new JTable();
+		while(dtm.getRowCount()!=0){
+			dtm.removeRow(0);
+		}
+		dtm.setColumnIdentifiers(column);
+		recordTable.setModel(dtm);
+
+		LogicMain m_pDocument = LogicMain.getDocument();
+		m_pDocument.setEditTable((String)moving.getUserObject());
+		java.util.List<Field> fieldlist = m_pDocument.getTbEntity().getFieldArray();
+		for(int j = 0; j<fieldlist.size();j++){
+			Field field = fieldlist.get(j);
+			dtm.addRow(new Object[] {field.getFieldName(), field.getFieldType()});
+			newcolumn.add(field.getFieldName());
+		}
+		//		}
+		/*
+		Action action = new AbstractAction()
+		{
+		    public void actionPerformed(ActionEvent e)
+		    {
+		        TableCellListener tcl = (TableCellListener)e.getSource();
+		        System.out.println("Row   : " + tcl.getRow());
+		        System.out.println("Column: " + tcl.getColumn());
+		        System.out.println("Old   : " + tcl.getOldValue());
+		        System.out.println("New   : " + tcl.getNewValue());
+		        dtm2 = new DefaultTableModel(0,0);
+		        dtm2.setColumnIdentifiers(newcolumn);
+		        showTable.setModel(dtm2);
+		        if(dtm2.getValueAt(, arg1))
+		        dtm2.addRow(new Object[] {tcl.getNewValue()});
+		    }
+		};
+
+		TableCellListener tcl = new TableCellListener(recordTable, action);
+		 */
+		JPanel buttonpanel = getButtonPanel(new ActionListener(){
+
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				LogicMain m_pDocument = LogicMain.getDocument();
+				m_pDocument.setEditTable((String)moving.getUserObject());
+				Record record = new Record();
+
+				dtm2.setColumnIdentifiers(newcolumn);
+
+				centerPanel.setRightComponent(panelright2);
+				for (int i = 0; i < dtm.getRowCount(); i++) {
+					for (int j = 0; j < dtm.getColumnCount(); j++) {
+						// we put into hashmap the values
+						String fieldName = (String)dtm.getValueAt(i, 0);
+						Object fieldValue = dtm.getValueAt(i, 2);
+						record.put(fieldName, fieldValue);
+					}
+				}
+				generalPopup.setVisible(false);
+				m_pDocument.insertRecord(record);
+				try {
+					m_pDocument.loadRecord();
+				} catch (SecurityException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				java.util.List<Record> recList= m_pDocument.getRecArray();
+				Record recordTest;
+
+
+				dtm2.setColumnCount(dtm.getRowCount());
+				dtm2.setRowCount((recList.size()/dtm.getRowCount()));
+				int d = 0;
+				for (int l = 0; l < (recList.size()/dtm.getRowCount()); l++ ) {
+					for (int k = 0; k < dtm.getRowCount(); k++) {
+
+						dtm2.setValueAt(recList.get(d).get(dtm2.getColumnName(k)), l, k);
+						d++;
+					}
+				}
+			}
+
+		});
+		JScrollPane fieldpanel = new JScrollPane(recordTable);
+		panel.add(fieldpanel,BorderLayout.CENTER);
+		panel.add(buttonpanel, BorderLayout.SOUTH);
 		generalPopup.setContentPane(panel);
 		generalPopup.setTitle("Add a new record");
 		generalPopup.setVisible(true);
@@ -343,6 +610,7 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		final JTextField defaultField = new JTextField(10);
 		final JCheckBox primary = new JCheckBox("Primary Key");
 		final JCheckBox mandatory = new JCheckBox("Not NULL");
+		final JCheckBox foreign_key = new JCheckBox("Foreign Key");
 		JPanel buttonPanel = getButtonPanel(new ActionListener() {
 
 			@Override
@@ -351,7 +619,15 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 				{
 					generalPopup.setVisible(false);
 					Field field = new Field();
-					field.setFieldName(nameField.getText());
+					if(is_mandatory) {
+						if (nameField.getText().isEmpty()) {
+							field.setFieldName(defaultField.getText());
+						} else {
+							field.setFieldName(nameField.getText());
+						}
+					} else {
+						field.setFieldName(nameField.getText());
+					}
 					field.setDefaultValue(defaultField.getText());
 					field.setFieldType((String)dataTypeBox.getSelectedItem());
 					int integrity = -1;
@@ -378,7 +654,7 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 						}
 					}
 				}
-				update();
+				updateTree();
 			}
 		});
 		fieldPanel.add(nameLabel);
@@ -393,18 +669,47 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				mandatory.setSelected(true);
+				is_mandatory = true;
+				is_primarykey = true;
+				if (foreign_key.isSelected() && primary.isSelected()) {
+					foreign_key.setSelected(false);
+					primary.setSelected(false);
+					is_mandatory = false;
+					is_primarykey = false;
+				}
 			}
 		});
 		mandatory.addActionListener(new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				is_mandatory = true;
+				if (foreign_key.isSelected() && primary.isSelected()) {
+					foreign_key.setSelected(false);
+					primary.setSelected(false);
+					is_mandatory = false;
+					is_primarykey = false;
+				}
+			}
+		});
+		foreign_key.addActionListener(new ActionListener() {
 
+
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				is_foreignkey = true;
+				if (foreign_key.isSelected() && primary.isSelected()) {
+					foreign_key.setSelected(false);
+					primary.setSelected(false);
+					is_mandatory = false;
+					is_primarykey = false;
+				}
 			}
 		});
 
 		checkPanel.add(primary);
 		checkPanel.add(mandatory);
+		checkPanel.add(foreign_key);
 
 		panel.add(fieldPanel,BorderLayout.NORTH);
 		panel.add(checkPanel,BorderLayout.CENTER);
@@ -428,52 +733,41 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		generalPopup.setVisible(true);
 	}
 
-	private void openTable() {
+	private void openTable() throws SecurityException, IOException {			// refresh the record view on mainwindow
 
-		statusLabel.setText("Opening table");
-		JPanel panel = new JPanel(new BorderLayout());
-		JPanel openTablePanel = new JPanel();
-		final JComboBox tableNameBox = getComboBox("openTable");
-		JPanel buttonPanel = getButtonPanel(new ActionListener() {
+		statusLabel.setText("View record");
+		// read the records and display the record View
+		centerPanel.setRightComponent(panelright2);
+		LogicMain m_pDocument = LogicMain.getDocument();
+		m_pDocument.setEditTable(movingTable.getTableName());
+		try {
+			m_pDocument.loadRecord();
+		} catch (SecurityException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		java.util.List<Record> recList= m_pDocument.getRecArray();
+		java.util.List<Field> fieldList= m_pDocument.getTbEntity().getFieldArray();
+//		Record recordTest;
 
-			@Override
-			public void actionPerformed(ActionEvent e) {
 
+		dtm2.setColumnCount(fieldList.size());
+		dtm2.setRowCount((recList.size()/fieldList.size()));
+		int d = 0;
+		for (int l = 0; l < (recList.size()/fieldList.size()); l++ ) {
+			for (int k = 0; k < fieldList.size(); k++) {
+
+				dtm2.setValueAt(recList.get(d).get(dtm2.getColumnName(k)), l, k);
+				d++;
 			}
-		});
-
-		openTablePanel.add(tableNameBox);
-		panel.add(openTablePanel, BorderLayout.CENTER);
-		panel.add(buttonPanel, BorderLayout.SOUTH);
-
-		setDesignPanel(openTablePanel, "Please choose the table you want to open");
-		generalPopup.setContentPane(panel);
-		generalPopup.setTitle("Open a table");
-		generalPopup.setVisible(true);
+		}
 	}
 
 	private void modTable() {	// function not yet implemented
 
 		statusLabel.setText("Modifying table");
-		JPanel panel = new JPanel(new BorderLayout());
-		JPanel chooseTablePanel = new JPanel();
-		final JComboBox tableNameBox = getComboBox("modTable");
-		JPanel buttonPanel = getButtonPanel(new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				System.out.println(tableNameBox.getSelectedItem());
-			}
-		});
-
-		chooseTablePanel.add(tableNameBox);
-		panel.add(chooseTablePanel,BorderLayout.CENTER);
-		panel.add(buttonPanel,BorderLayout.SOUTH);
-
-		setDesignPanel(chooseTablePanel, "Choose the table you want to modify");
-		generalPopup.setContentPane(panel);
-		generalPopup.setTitle("Modify a table");
-		generalPopup.setVisible(true);
+		updateTable();
 	}
 	public void setDesignPanel(JPanel panel,String title) {
 		panel.setBorder(BorderFactory.createCompoundBorder(
@@ -511,7 +805,7 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 						}
 					}
 				}
-				update();
+				updateTree();
 			}
 		});
 		JPanel createPanel = new JPanel();
@@ -571,11 +865,10 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 					{
 						if (m_pDocument.getDatabaseName() != null)
 						{
-							//							CreateDatabaseTree(m_pDocument.getDatabaseName()); arbre
 							mainFrame.setTitle(m_pDocument.getDatabaseName());
 							root.setUserObject(m_pDocument.getDatabaseName());
-							//							tree.clearSelection();
 							root.removeAllChildren();
+
 							tree.setRootVisible(true);
 							m_pDocument.loadTables();
 							java.util.List<Table> tables = m_pDocument.getTbArray();
@@ -591,35 +884,23 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 								}
 
 							}
-							
-//							tree = new JTree(root);
+
 						}
 					}
 				}
-				update();
+				updateTree();
 			}
 		});
 		JPanel openPanel = new JPanel();
-		//		JButton okayButton = new JButton("Accept"), cancelButton = new JButton("Cancel");
 
 
-		//		dbNameBox = getComboBox();
-		// dbNameBox.getSelectedItem()
 		// to acccess the selected object
 
 		openPanel.add(dbNameBox);
-		//		buttonPanel.add(okayButton);
-		//		buttonPanel.add(cancelButton);
 
 		openPanel.setBorder(BorderFactory.createCompoundBorder(
 				BorderFactory.createTitledBorder("Please choose the database you want to open :"),
 				BorderFactory.createEmptyBorder(10,10,10,10)));
-		//		buttonPanel.setBorder(BorderFactory.createCompoundBorder(
-		//				BorderFactory.createTitledBorder(""),
-		//				BorderFactory.createEmptyBorder(10,10,10,10)));
-
-		//		okayButton.addActionListener();
-		//		cancelButton.addActionListener(cancelListener);
 
 		panel.add(openPanel,BorderLayout.CENTER);
 		panel.add(buttonPanel,BorderLayout.SOUTH);
@@ -664,8 +945,38 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		} else if ( typeOfComboBox == "addField" ) {
 			comboBox.addItem("VARCHAR");
 			comboBox.addItem("BOOLEAN");
+			comboBox.addItem("INTEGER");
 			comboBox.addItem("DOUBLE");
 			comboBox.addItem("DATETIME");
+
+		} else if ( typeOfComboBox == "queryRecord") {
+			java.util.List<Table> tableArray = m_pDocument.getTbArray();
+			String strError = m_pDocument.getError();
+			if(strError == null && tableArray != null)
+			{
+				for(int i=0; i<tableArray.size(); i++)
+					comboBox.addItem(tableArray.get(i).getTableName());
+			}
+			else
+			{
+				//				AfxMessagstrError); //popup here JOptionPanel
+				m_pDocument.setError("");
+			}
+		} else if ( typeOfComboBox == "queryRecord2") {
+			java.util.List<Field> fieldArray = null;
+			if (m_pDocument.getTbEntity()!=null)
+			fieldArray = m_pDocument.getTbEntity().getFieldArray();
+			String strError = m_pDocument.getError();
+			if(strError == null && fieldArray != null)
+			{
+				for(int i=0; i<fieldArray.size(); i++)
+					comboBox.addItem(fieldArray.get(i).getFieldName());
+			}
+			else
+			{
+				//				AfxMessagstrError); //popup here JOptionPanel
+				m_pDocument.setError("");
+			}
 		}
 		return comboBox;
 	}	
@@ -712,21 +1023,20 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 					{
 						if (m_pDocument.getDatabaseName() != null)
 						{
-							//							CreateDatabaseTree(m_pDocument.getDatabaseName()); arbre
 							mainFrame.setTitle(m_pDocument.getDatabaseName());
+							root.removeAllChildren();
 							tree.setRootVisible(true);
 							root.setUserObject(m_pDocument.getDatabaseName());
 							root = createNodes(root,"","");
 						}
 					}
 				}
-				update();
+				updateTree();
 			}
 		});
 
 		buttonPanel.add(cancelButton);
 
-		//		okayButton.addActionListener(validCreateListener);
 		cancelButton.addActionListener(cancelListener);
 
 		panel.add(createPanel,BorderLayout.CENTER);
@@ -746,12 +1056,13 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 		}
 
 	};
+	private boolean unclearTables;
+	private DefaultMutableTreeNode tableNode;
+	private Table movingTable = null;
+	private boolean unclearFields;
 
 	// to list the tree of the databases / tables ...
 	private DefaultMutableTreeNode createNodes(DefaultMutableTreeNode parent, String nodeType, String nameOfNode) {
-		//		root = new DefaultMutableTreeNode(databaseName);
-		//		tree = new JTree(root);
-		//		tree.setRootVisible(true);
 		if(nodeType.equals("table"))
 		{
 			return getTreeNode(nameOfNode, parent);
@@ -772,11 +1083,99 @@ public class MainWindow implements ActionListener, TreeSelectionListener {
 
 	@Override
 	public void valueChanged(TreeSelectionEvent e) {
+		LogicMain m_pDocument = LogicMain.getDocument();
+		java.util.List<Table> tables = null;
+		java.util.List<Field> fieldlist = null;
+
+
+		if (m_pDocument.getTbArray() != null) {
+			tables = m_pDocument.getTbArray();
+			//			System.out.println("we can get the list of tables");
+			unclearTables = false;
+		} else {
+			unclearTables = true;
+		}
+		if (m_pDocument.getTbEntity() != null) {
+			if (m_pDocument.getTbEntity().getFieldArray() != null) {
+				unclearFields = false;
+				unclearTables = false;
+				//				System.out.println("we can get the list of fields");
+			} else {
+				unclearFields = true;
+			}
+		} else {
+		}
+
+
 		DefaultMutableTreeNode node = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
 		moving = node;
+
+		if (moving != null) {
+
+			if (!unclearTables) {
+				for (int i =0; i < tables.size(); i++) {
+					Table checkTable = tables.get(i);
+					if (moving.getUserObject().equals(checkTable.getTableName())) {
+						tableNode = moving;
+						movingTable = checkTable;
+						updateTable();
+						break;
+					}
+				}
+			}
+			if (!unclearTables && !unclearFields) {
+
+				if (!moving.isNodeDescendant(tableNode)) {
+					System.out.println("On affiche la view de la nouvelle table parent");
+				}
+			}
+		}
+
 	}
-	private void update() {
+	
+	private void updateTree() {
 		DefaultTreeModel model = (DefaultTreeModel) tree.getModel();
 		model.reload();
 	}
+	private void updateTable() {
+		if (centerPanel.getRightComponent() == panelright2)
+			centerPanel.setRightComponent(panelright);
+		LogicMain m_pDocument = LogicMain.getDocument();
+		m_pDocument.loadTables();
+		java.util.List<Table> tables = m_pDocument.getTbArray();
+		for (int i = 0; i < tables.size(); i++) {
+			if ( moving.getUserObject().equals(tables.get(i).getTableName()) )
+				m_pDocument.setEditTable((String)moving.getUserObject()); 
+		}
+		if (m_pDocument.getTbEntity() != null) {
+			java.util.List<Field> fieldList = m_pDocument.getTbEntity().getFieldArray();
+			Field itemTable = new Field();
+			while (tableModel.getRowCount()!=0) {
+				tableModel.removeRow(0);
+			}
+			if (fieldList!=null){
+				if (is_foreignkey && is_primarykey) {
+					is_foreignkey = false;
+					is_primarykey = false;
+				}
+				for (int i=0; i < fieldList.size(); i++) {
+					itemTable = fieldList.get(i);
+					String[] row = {
+							(String) itemTable.fillTable(itemTable, 0, is_foreignkey),
+							(String) itemTable.fillTable(itemTable, 1, is_foreignkey),
+							(String) itemTable.fillTable(itemTable, 2, is_foreignkey),
+							(String) itemTable.fillTable(itemTable, 3, is_foreignkey),
+							(String) itemTable.fillTable(itemTable, 4, is_foreignkey)
+					};
+					tableModel.addRow(row);
+				}
+				is_foreignkey = false;
+				is_mandatory = false;
+				is_primarykey = false;
+			}
+		}
+	}
+	private void updateView() {
+	}
 }
+
